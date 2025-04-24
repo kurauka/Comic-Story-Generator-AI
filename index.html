@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comic Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Bangers&display=swap" rel="stylesheet">
+  <style>
+    .font-comic {
+      font-family: 'Comic Neue', cursive;
+    }
+    .font-title {
+      font-family: 'Bangers', cursive;
+    }
+    .comic-panel {
+      border: 2px solid black;
+      box-shadow: 5px 5px 0px rgba(0,0,0,0.2);
+    }
+    .page-turn {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    .page-turn:after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.1) 50%);
+    }
+    .page-turn:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .pulse-animation {
+      animation: pulse 2s infinite;
+    }
+    .layout-option {
+      transition: all 0.3s ease;
+    }
+    .layout-option:hover {
+      transform: scale(1.05);
+    }
+    .layout-option.selected {
+      border-color: #2563eb;
+      background-color: #dbeafe;
+    }
+    .panel-item {
+      background-color: #f3f4f6;
+      border: 2px dashed #6b7280;
+      border-radius: 4px;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-purple-200 to-blue-300 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <h1 class="font-title text-6xl text-blue-900 mb-2 tracking-wider">Comic Story Generator</h1>
+      <p class="text-lg text-blue-800 font-comic">Create your own comic adventures with AI-powered storytelling!</p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- Sidebar -->
+      <div class="w-full lg:w-1/3">
+        <div class="bg-white rounded-2xl p-6 shadow-xl border-2 border-blue-400">
+          <div class="mb-6">
+            <label for="prompt" class="block text-xl font-bold mb-3 text-blue-900 font-comic">Your Comic Prompt:</label>
+            <textarea 
+              id="prompt" 
+              rows="5" 
+              class="w-full p-4 border-2 border-blue-300 rounded-xl mb-4 font-comic focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              placeholder="e.g. A superhero dog saves the playground from alien cats"></textarea>
+          </div>
+          
+          <div class="mb-6">
+            <label class="block text-xl font-bold mb-3 text-blue-900 font-comic">Comic Style:</label>
+            <div class="grid grid-cols-2 gap-3">
+              <button class="py-2 px-4 bg-blue-100 border-2 border-blue-400 rounded-lg font-comic hover:bg-blue-200 transition" onclick="setStyle('superhero')">Superhero</button>
+              <button class="py-2 px-4 bg-blue-100 border-2 border-blue-400 rounded-lg font-comic hover:bg-blue-200 transition" onclick="setStyle('fantasy')">Fantasy</button>
+              <button class="py-2 px-4 bg-blue-100 border-2 border-blue-400 rounded-lg font-comic hover:bg-blue-200 transition" onclick="setStyle('sci-fi')">Sci-Fi</button>
+              <button class="py-2 px-4 bg-blue-100 border-2 border-blue-400 rounded-lg font-comic hover:bg-blue-200 transition" onclick="setStyle('comedy')">Comedy</button>
+            </div>
+          </div>
+          
+          <div class="mb-6">
+            <label for="pageCount" class="block text-xl font-bold mb-3 text-blue-900 font-comic">Number of Pages:</label>
+            <input 
+              type="range" 
+              min="1" 
+              max="10" 
+              value="4" 
+              class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer" 
+              id="pageCount">
+            <div class="flex justify-between mt-1 font-comic text-blue-800">
+              <span>1</span>
+              <span id="pageCountValue">4</span>
+              <span>10</span>
+            </div>
+          </div>
+          
+          <!-- Panel Layout Generator -->
+          <div class="mb-6">
+            <label class="block text-xl font-bold mb-3 text-blue-900 font-comic">Panel Layout:</label>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="layout-option border-2 border-blue-300 rounded-lg p-2 cursor-pointer selected" onclick="selectLayout('classic')">
+                <div class="text-center mb-1 font-comic font-bold">Classic</div>
+                <div class="grid grid-cols-2 gap-1 h-16">
+                  <div class="panel-item"></div>
+                  <div class="panel-item"></div>
+                  <div class="panel-item"></div>
+                  <div class="panel-item"></div>
+                </div>
+              </div>
+              <div class="layout-option border-2 border-blue-300 rounded-lg p-2 cursor-pointer" onclick="selectLayout('manga')">
+                <div class="text-center mb-1 font-comic font-bold">Manga</div>
+                <div class="grid grid-cols-3 gap-1 h-16">
+                  <div class="panel-item col-span-2"></div>
+                  <div class="panel-item row-span-2"></div>
+                  <div class="panel-item"></div>
+                  <div class="panel-item"></div>
+                </div>
+              </div>
+              <div class="layout-option border-2 border-blue-300 rounded-lg p-2 cursor-pointer" onclick="selectLayout('widescreen')">
+                <div class="text-center mb-1 font-comic font-bold">Widescreen</div>
+                <div class="grid grid-cols-1 gap-1 h-16">
+                  <div class="panel-item"></div>
+                  <div class="panel-item"></div>
+                  <div class="panel-item"></div>
+                </div>
+              </div>
+              <div class="layout-option border-2 border-blue-300 rounded-lg p-2 cursor-pointer" onclick="selectLayout('dynamic')">
+                <div class="text-center mb-1 font-comic font-bold">Dynamic</div>
+                <div class="grid grid-cols-3 gap-1 h-16">
+                  <div class="panel-item"></div>
+                  <div class="panel-item"></div>
+                  <div class="panel-item"></div>
+                  <div class="panel-item col-span-3"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-6">
+            <label class="block text-xl font-bold mb-3 text-blue-900 font-comic">Panels Per Page:</label>
+            <div class="flex items-center">
+              <button onclick="decreasePanels()" class="bg-blue-100 border-2 border-blue-400 rounded-lg w-8 h-8 flex items-center justify-center">-</button>
+              <div id="panelsPerPage" class="mx-3 font-comic text-xl w-8 text-center">4</div>
+              <button onclick="increasePanels()" class="bg-blue-100 border-2 border-blue-400 rounded-lg w-8 h-8 flex items-center justify-center">+</button>
+            </div>
+          </div>
+          
+          <button 
+            id="generateButton"
+            onclick="generateStory()" 
+            class="w-full bg-blue-600 text-white py-3 px-6 rounded-xl hover:bg-blue-700 font-bold text-lg font-comic transition transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Generate My Comic
+          </button>
+        </div>
+        
+        <!-- Download Button (Initially Hidden) -->
+        <div id="download-container" class="mt-6 hidden">
+          <button 
+            onclick="downloadPDF()" 
+            class="w-full bg-green-600 text-white py-3 px-6 rounded-xl hover:bg-green-700 font-bold text-lg font-comic transition transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg pulse-animation">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download as PDF
+          </button>
+        </div>
+      </div>
+      
+      <!-- Comic Display -->
+      <div class="w-full lg:w-2/3">
+        <div id="loading" class="hidden justify-center items-center p-12" aria-live="polite">
+          <div class="font-comic text-xl text-blue-800 flex flex-col items-center">
+            <svg class="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p>Creating your comic masterpiece with AI...</p>
+          </div>
+        </div>
+        
+        <div id="comic-pages" class="grid grid-cols-1 md:grid-cols-2 gap-6" aria-live="polite"></div>
+        
+        <!-- Layout Preview -->
+        <div id="layout-preview" class="mt-6 p-6 bg-white rounded-xl shadow-lg hidden">
+          <h3 class="text-xl font-bold text-blue-900 font-comic mb-4">Panel Layout Preview</h3>
+          <div id="layout-container" class="border-2 border-blue-300 rounded-lg p-4">
+            <!-- Preview content will be inserted here -->
+          </div>
+        </div>
+        
+        <!-- Error message display -->
+        <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded font-comic mt-4" aria-live="assertive"></div>
+      </div>
+    </div>
+    
+    <!-- API Status Indicator -->
+    <div class="mt-8 text-center">
+      <div id="api-status" class="inline-flex items-center px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-comic">
+        <span class="h-3 w-3 rounded-full mr-2 bg-gray-400"></span>
+        Checking API connection...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Track current style and layout
+    let currentStyle = 'superhero';
+    let currentLayout = 'classic';
+    let panelsPerPage = 4;
+    const API_URL = 'http://localhost:8000'; // Update this to match your backend URL
+    
+    // Update page count display
+    const pageCountSlider = document.getElementById('pageCount');
+    const pageCountValue = document.getElementById('pageCountValue');
+    const generateButton = document.getElementById('generateButton');
+    
+    // Check API connection on page load
+    window.addEventListener('DOMContentLoaded', checkApiStatus);
+    
+    async function checkApiStatus() {
+      const statusIndicator = document.getElementById('api-status');
+      
+      try {
+        const response = await fetch(`${API_URL}/`);
+        if (response.ok) {
+          statusIndicator.innerHTML = `
+            <span class="h-3 w-3 rounded-full mr-2 bg-green-500"></span>
+            API Connected
+          `;
+          statusIndicator.classList.remove('bg-gray-200', 'text-gray-700');
+          statusIndicator.classList.add('bg-green-100', 'text-green-800');
+        } else {
+          throw new Error('API responded with an error');
+        }
+      } catch (error) {
+        statusIndicator.innerHTML = `
+          <span class="h-3 w-3 rounded-full mr-2 bg-red-500"></span>
+          API Not Connected
+        `;
+        statusIndicator.classList.remove('bg-gray-200', 'text-gray-700');
+        statusIndicator.classList.add('bg-red-100', 'text-red-700');
+      }
+    }
+    
+    pageCountSlider.addEventListener('input', function() {
+      pageCountValue.textContent = this.value;
+    });
+    
+    function setStyle(style) {
+      currentStyle = style;
+      // Highlight selected style button
+      document.querySelectorAll('button').forEach(btn => {
+        if (btn.innerText.toLowerCase() === style) {
+          btn.classList.add('bg-blue-300', 'border-blue-600');
+          btn.classList.remove('bg-blue-100', 'border-blue-400');
+        } else if (['superhero', 'fantasy', 'sci-fi', 'comedy'].includes(btn.innerText.toLowerCase())) {
+          btn.classList.remove('bg-blue-300', 'border-blue-600');
+          btn.classList.add('bg-blue-100', 'border-blue-400');
+        }
+      });
+    }
+    
+    function selectLayout(layout) {
+      currentLayout = layout;
+      // Highlight selected layout option
+      document.querySelectorAll('.layout-option').forEach(option => {
+        option.classList.remove('selected');
+        if (option.querySelector('.font-comic').innerText.toLowerCase() === layout) {
+          option.classList.add('selected');
+        }
+      });
+      
+      // Update layout preview
+      updateLayoutPreview();
+    }
+    
+    function updateLayoutPreview() {
+      const previewContainer = document.getElementById('layout-preview');
+      const layoutContainer = document.getElementById('layout-container');
+      
+      previewContainer.classList.remove('hidden');
+      layoutContainer.innerHTML = '';
+      
+      // Create layout preview based on selected layout and panel count
+      let layoutHTML = '';
+      
+      switch(currentLayout) {
+        case 'classic':
+          layoutHTML = createClassicLayout();
+          break;
+        case 'manga':
+          layoutHTML = createMangaLayout();
+          break;
+        case 'widescreen':
+          layoutHTML = createWidescreenLayout();
+          break;
+        case 'dynamic':
+          layoutHTML = createDynamicLayout();
+          break;
+      }
+      
+      layoutContainer.innerHTML = layoutHTML;
+    }
+    
+    function createClassicLayout() {
+      let html = '<div class="grid grid-cols-2 gap-2 aspect-[4/3]">';
+      
+      // Classic layout divides panels evenly in a grid
+      const cols = panelsPerPage <= 4 ? 2 : 3;
+      const rows = Math.ceil(panelsPerPage / cols);
+      
+      html = `<div class="grid grid-cols-${cols} gap-2 aspect-[4/3]">`;
+      
+      for (let i = 0; i < panelsPerPage; i++) {
+        html += `<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel ${i+1}</div>`;
+      }
+      
+      html += '</div>';
+      return html;
+    }
+    
+    function createMangaLayout() {
+      // Manga style with varying panel sizes
+      let html = '<div class="grid grid-cols-3 grid-rows-3 gap-2 aspect-[4/3]">';
+      
+      if (panelsPerPage <= 4) {
+        html = '<div class="grid grid-cols-3 grid-rows-2 gap-2 aspect-[4/3]">';
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 col-span-2 flex items-center justify-center font-comic">Panel 1</div>';
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 row-span-2 flex items-center justify-center font-comic">Panel 2</div>';
+        
+        if (panelsPerPage > 2) {
+          html += '<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel 3</div>';
+        }
+        
+        if (panelsPerPage > 3) {
+          html += '<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel 4</div>';
+        }
+      } else {
+        // More complex layout for higher panel counts
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 col-span-2 flex items-center justify-center font-comic">Panel 1</div>';
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 row-span-2 flex items-center justify-center font-comic">Panel 2</div>';
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel 3</div>';
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel 4</div>';
+        
+        for (let i = 4; i < panelsPerPage && i < 8; i++) {
+          html += `<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel ${i+1}</div>`;
+        }
+      }
+      
+      html += '</div>';
+      return html;
+    }
+    
+    function createWidescreenLayout() {
+      // Widescreen layout with full-width panels
+      let html = '<div class="flex flex-col gap-2 aspect-[4/3]">';
+      
+      for (let i = 0; i < panelsPerPage; i++) {
+        html += `<div class="bg-gray-200 rounded border-2 border-gray-400 flex-1 flex items-center justify-center font-comic">Panel ${i+1}</div>`;
+      }
+      
+      html += '</div>';
+      return html;
+    }
+    
+    function createDynamicLayout() {
+      // Dynamic layout with varying panel sizes and one large panel
+      let html = '<div class="grid grid-cols-3 gap-2 aspect-[4/3]">';
+      
+      if (panelsPerPage <= 4) {
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel 1</div>';
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel 2</div>';
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel 3</div>';
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 col-span-3 flex items-center justify-center font-comic">Panel 4</div>';
+      } else {
+        for (let i = 0; i < 3; i++) {
+          html += `<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel ${i+1}</div>`;
+        }
+        
+        html += '<div class="bg-gray-200 rounded border-2 border-gray-400 col-span-3 flex items-center justify-center font-comic">Panel 4</div>';
+        
+        for (let i = 4; i < panelsPerPage && i < 9; i++) {
+          html += `<div class="bg-gray-200 rounded border-2 border-gray-400 flex items-center justify-center font-comic">Panel ${i+1}</div>`;
+        }
+      }
+      
+      html += '</div>';
+      return html;
+    }
+    
+    function increasePanels() {
+      if (panelsPerPage < 12) {
+        panelsPerPage++;
+        document.getElementById('panelsPerPage').textContent = panelsPerPage;
+        updateLayoutPreview();
+      }
+    }
+    
+    function decreasePanels() {
+      if (panelsPerPage > 1) {
+        panelsPerPage--;
+        document.getElementById('panelsPerPage').textContent = panelsPerPage;
+        updateLayoutPreview();
+      }
+    }
+
+    async function generateStory() {
+        const prompt = document.getElementById('prompt').value;
+        if (!prompt.trim()) {
+          alert("Please enter a prompt for your comic!");
+          return;
+        }
+        
+        const pageCount = document.getElementById('pageCount').value;
+        
+        // Hide any previous error messages
+        document.getElementById('error-message').classList.add('hidden');
+        
+        // Hide the layout preview
+        document.getElementById('layout-preview').classList.add('hidden');
+        
+        // Show loading indicator and disable button
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('loading').classList.add('flex');
+        document.getElementById('comic-pages').innerHTML = '';
+        generateButton.disabled = true;
+        generateButton.classList.add('opacity-70', 'cursor-not-allowed');
+          
+      // Build the enhanced prompt with style, layout, panel count, and page count
+      const enhancedPrompt = `${prompt} - Style: ${currentStyle}, Layout: ${currentLayout} with ${panelsPerPage} panels per page, create exactly ${pageCount} comic book pages with distinct scenes and dialog for each panel.`;
+      
+      try {
+        // Send request to the FastAPI backend
+        const response = await fetch(`${API_URL}/generate-story`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: enhancedPrompt })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const storyText = data.story || 'No story generated.';
+        
+        // Parse and format the story into pages
+        const pages = parseStoryIntoPages(storyText, pageCount);
+        
+        // Render the comic pages with selected layout
+        renderComicPages(pages);
+        
+        // Show download button
+        document.getElementById('download-container').classList.remove('hidden');
+      } catch (error) {
+        console.error(error);
+        // Show error message
+        const errorElement = document.getElementById('error-message');
+        errorElement.textContent = `Error: ${error.message || 'Failed to generate story. Please try again.'}`;
+        errorElement.classList.remove('hidden');
+      } finally {
+        // Hide loading indicator and re-enable button
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('loading').classList.remove('flex');
+        generateButton.disabled = false;
+        generateButton.classList.remove('opacity-70', 'cursor-not-allowed');
+      }
+    }
+    
+    function parseStoryIntoPages(storyText, requestedPageCount) {
+      // First, try to find explicit page markers like "Page 1:" or "Page 1 -"
+      const pageRegex = /(?:^|\n)(?:Page\s*(\d+)[\s:-]+|(?:\*\*Page\s*(\d+)))/i;
+      let pages = [];
+      
+      // Split the text by page markers
+      const pageMatches = storyText.split(pageRegex).filter(Boolean);
+      
+      if (pageMatches.length > 1) {
+        // Process pages found with explicit markers
+        for (let i = 0; i < pageMatches.length; i += 2) {
+          // Check if we've processed all content
+          if (i + 1 >= pageMatches.length) break;
+          
+          const pageNumber = parseInt(pageMatches[i]);
+          const content = pageMatches[i + 1].trim();
+          
+          if (!isNaN(pageNumber) && content) {
+            pages.push({
+              pageNumber: pageNumber,
+              content: content
+            });
+          }
+        }
+      } 
+      
+      // If no page markers found or if parsing failed, create our own pages
+      if (pages.length === 0) {
+        // Split by double newlines to get paragraphs
+        const paragraphs = storyText.split(/\n\n+/).filter(p => p.trim());
+        const paragraphsPerPage = Math.max(1, Math.ceil(paragraphs.length / requestedPageCount));
+        
+        // Group paragraphs into pages
+        for (let i = 0; i < paragraphs.length; i += paragraphsPerPage) {
+          const pageContent = paragraphs.slice(i, i + paragraphsPerPage).join('\n\n');
+          pages.push({
+            pageNumber: pages.length + 1,
+            content: pageContent
+          });
+          
+          // Stop if we've reached the requested page count
+          if (pages.length >= requestedPageCount) break;
+        }
+      }
+      
+      // Make sure we have the requested number of pages
+      if (pages.length < requestedPageCount) {
+        // If we have fewer pages than requested, split the largest pages
+        const sortedByLength = [...pages].sort((a, b) => b.content.length - a.content.length);
+        
+        while (pages.length < requestedPageCount && sortedByLength[0].content.length > 200) {
+          const pageToSplit = sortedByLength[0];
+          const halfway = Math.floor(pageToSplit.content.length / 2);
+          
+          // Find a good split point (end of a sentence)
+          let splitPoint = pageToSplit.content.substring(halfway).search(/[.!?]\s/) + halfway;
+          if (splitPoint < halfway) splitPoint = halfway; // Fallback if no sentence break found
+          
+          // Create two pages from the split content
+          const firstHalf = pageToSplit.content.substring(0, splitPoint + 1).trim();
+          const secondHalf = pageToSplit.content.substring(splitPoint + 1).trim();
+          
+          // Update the original page with first half
+          pageToSplit.content = firstHalf;
+          
+          // Create a new page with second half
+          pages.push({
+            pageNumber: pages.length + 1,
+            content: secondHalf
+          });
+          
+          // Resort by content length
+          sortedByLength.sort((a, b) => b.content.length - a.content.length);
+        }
+      } else if (pages.length > requestedPageCount) {
+        // If we have more pages than requested, merge the shortest pages
+        pages = pages.slice(0, requestedPageCount);
+      }
+      
+      // Ensure page numbers are sequential
+      pages = pages.sort((a, b) => a.pageNumber - b.pageNumber)
+                  .map((page, index) => {
+                    return {
+                      ...page,
+                      pageNumber: index + 1
+                    };
+                  });
+      
+      return pages;
+    }
+
+    function renderComicPages(pages) {
+      const container = document.getElementById('comic-pages');
+      container.innerHTML = '';
+      
+      pages.forEach(page => {
+        createComicPage(container, page.content, page.pageNumber);
+      });
+    }
+    
+    function createComicPage(container, content, pageNumber) {
+      const pageDiv = document.createElement('div');
+      pageDiv.className = 'comic-panel bg-white p-5 rounded-lg shadow-xl font-comic text-base page-turn';
+      
+      // Apply style-based background color
+      let bgColor = 'bg-white';
+      if (currentStyle === 'superhero') {
+        const colors = ['bg-blue-50', 'bg-red-50', 'bg-yellow-50'];
+        bgColor = colors[Math.floor(Math.random() * colors.length)];
+      } else if (currentStyle === 'fantasy') {
+        const colors = ['bg-purple-50', 'bg-green-50', 'bg-amber-50'];
+        bgColor = colors[Math.floor(Math.random() * colors.length)];
+      } else if (currentStyle === 'sci-fi') {
+        const colors = ['bg-cyan-50', 'bg-teal-50', 'bg-sky-50'];
+        bgColor = colors[Math.floor(Math.random() * colors.length)];
+      } else if (currentStyle === 'comedy') {
+        const colors = ['bg-pink-50', 'bg-orange-50', 'bg-lime-50'];
+        bgColor = colors[Math.floor(Math.random() * colors.length)];
+      }
+      
+      pageDiv.classList.add(bgColor);
+      
+      // Create page header
+      const pageHeader = document.createElement('h2');
+      pageHeader.className = 'text-2xl font-bold mb-3 text-center border-b-2 border-gray-300 pb-2';
+      pageHeader.textContent = `Page ${pageNumber}`;
+      pageDiv.appendChild(pageHeader);
+      
+      // Split content into panels based on selected layout and panels per page
+      const panels = createPanelsFromContent(content, panelsPerPage);
+      
+      // Create panel container based on selected layout
+      const panelContainer = document.createElement('div');
+      
+      switch(currentLayout) {
+        case 'classic':
+          panelContainer.className = 'grid grid-cols-2 gap-4 mb-4';
+          break;
+        case 'manga':
+          panelContainer.className = 'grid grid-cols-3 grid-rows-3 gap-4 mb-4';
+          break;
+        case 'widescreen':
+          panelContainer.className = 'flex flex-col gap-4 mb-4';
+          break;
+        case 'dynamic':
+          panelContainer.className = 'grid grid-cols-3 gap-4 mb-4';
+          break;
+        default:
+          panelContainer.className = 'grid grid-cols-2 gap-4 mb-4';
+      }
+      
+      // Add panels to the container based on layout
+      populatePanelsForLayout(panelContainer, panels, pageNumber);
+      
+      pageDiv.appendChild(panelContainer);
+      container.appendChild(pageDiv);
+    }
+    
+    function createPanelsFromContent(content, maxPanels) {
+      const panels = [];
+      
+      // First try to find explicit panel markers
+      const panelRegex = /(?:^|\n)(?:Panel\s*(\d+)[\s:-]+|(?:\*\*Panel\s*(\d+)))/i;
+      const panelMatches = content.split(panelRegex).filter(Boolean);
+      
+      if (panelMatches.length > 1) {
+        // Process panels found with explicit markers
+        for (let i = 0; i < panelMatches.length; i += 2) {
+          // Check if we've processed all content
+          if (i + 1 >= panelMatches.length) break;
+          
+          const panelNumber = parseInt(panelMatches[i]);
+          const panelContent = panelMatches[i + 1].trim();
+          
+          if (!isNaN(panelNumber) && panelContent) {
+            panels.push({
+              panelNumber: panelNumber,
+              content: panelContent
+            });
+          }
+        }
+      }
+      
+      // If no panel markers or not enough panels, split by paragraphs
+      if (panels.length < maxPanels) {
+        // Split by dialog/action patterns or paragraphs
+        const paragraphs = content.split(/\n\n+|\n(?=[A-Z][a-z]+:)/).filter(p => p.trim());
+        const remainingPanelsNeeded = maxPanels - panels.length;
+        const paragraphsPerPanel = Math.max(1, Math.ceil(paragraphs.length / remainingPanelsNeeded));
+        
+        // Group paragraphs into panels
+        for (let i = 0; i < paragraphs.length; i += paragraphsPerPanel) {
+          const panelContent = paragraphs.slice(i, i + paragraphsPerPanel).join('\n\n');
+          panels.push({
+            panelNumber: panels.length + 1,
+            content: panelContent
+          });
+          
+          // Stop if we've reached the max panels
+          if (panels.length >= maxPanels) break;
+        }
+      }
+      
+      // Make sure we have exactly the number of panels we need
+      if (panels.length > maxPanels) {
+        // Trim excess panels
+        return panels.slice(0, maxPanels);
+      } else if (panels.length < maxPanels) {
+        // Add empty panels if needed
+        while (panels.length < maxPanels) {
+          panels.push({
+            panelNumber: panels.length + 1,
+            content: "..."
+          });
+        }
+      }
+      
+      // Ensure panel numbers are sequential
+      return panels.map((panel, index) => {
+        return {
+          panelNumber: index + 1,
+          content: panel.content
+        };
+      });
+    }
+    
+    function populatePanelsForLayout(container, panels, pageNumber) {
+      // Format panels according to the selected layout
+      switch(currentLayout) {
+        case 'classic':
+          panels.forEach((panel, index) => {
+            const panelDiv = createPanelElement(panel.content, pageNumber, panel.panelNumber);
+            container.appendChild(panelDiv);
+          });
+          break;
+          
+        case 'manga':
+          if (panels.length >= 2) {
+            // Special layout for first two panels in manga style
+            const panel1 = createPanelElement(panels[0].content, pageNumber, panels[0].panelNumber);
+            panel1.className = 'col-span-2 bg-gray-100 rounded overflow-hidden border-2 border-gray-500';
+            container.appendChild(panel1);
+            
+            const panel2 = createPanelElement(panels[1].content, pageNumber, panels[1].panelNumber);
+            panel2.className = 'row-span-2 bg-gray-100 rounded overflow-hidden border-2 border-gray-500';
+            container.appendChild(panel2);
+            
+            // Add remaining panels normally
+            for (let i = 2; i < panels.length; i++) {
+              const panelDiv = createPanelElement(panels[i].content, pageNumber, panels[i].panelNumber);
+              container.appendChild(panelDiv);
+            }
+          } else {
+            // Fallback to classic if not enough panels
+            panels.forEach((panel, index) => {
+              const panelDiv = createPanelElement(panel.content, pageNumber, panel.panelNumber);
+              container.appendChild(panelDiv);
+            });
+          }
+          break;
+          
+        case 'widescreen':
+          panels.forEach((panel, index) => {
+            const panelDiv = createPanelElement(panel.content, pageNumber, panel.panelNumber);
+            panelDiv.className = 'bg-gray-100 rounded overflow-hidden border-2 border-gray-500';
+            container.appendChild(panelDiv);
+          });
+          break;
+          
+        case 'dynamic':
+          if (panels.length >= 4) {
+            // Add first three panels normally
+            for (let i = 0; i < 3; i++) {
+              const panelDiv = createPanelElement(panels[i].content, pageNumber, panels[i].panelNumber);
+              container.appendChild(panelDiv);
+            }
+            
+            // Fourth panel spans the full width
+            const panel4 = createPanelElement(panels[3].content, pageNumber, panels[3].panelNumber);
+            panel4.className = 'col-span-3 bg-gray-100 rounded overflow-hidden border-2 border-gray-500';
+            container.appendChild(panel4);
+            
+            // Add remaining panels normally
+            for (let i = 4; i < panels.length; i++) {
+              const panelDiv = createPanelElement(panels[i].content, pageNumber, panels[i].panelNumber);
+              container.appendChild(panelDiv);
+            }
+          } else {
+            // Fallback to classic if not enough panels
+            panels.forEach((panel, index) => {
+              const panelDiv = createPanelElement(panel.content, pageNumber, panel.panelNumber);
+              container.appendChild(panelDiv);
+            });
+          }
+          break;
+          
+        default:
+          // Default to classic grid
+          panels.forEach((panel, index) => {
+            const panelDiv = createPanelElement(panel.content, pageNumber, panel.panelNumber);
+            container.appendChild(panelDiv);
+          });
+      }
+    }
+    
+    function createPanelElement(content, pageNumber, panelNumber) {
+      const panelDiv = document.createElement('div');
+      panelDiv.className = 'bg-gray-100 rounded overflow-hidden border-2 border-gray-500';
+      
+      // Generate placeholder image for the panel
+      const imageUrl = `/api/placeholder/350/200?text=${currentStyle} p${pageNumber}-${panelNumber}`;
+      
+      // Format content with dialog highlights
+      let formattedContent = content;
+      
+      // Look for dialog patterns like "Character: 'Dialog'" or "Character: Dialog"
+      const dialogRegex = /([A-Za-z\s]+):\s*["'](.+?)["']/g;
+      formattedContent = formattedContent.replace(dialogRegex, (match, character, dialog) => {
+        return `**${character.trim()}:** [${dialog.trim()}]`;
+      });
+      
+      // Apply basic formatting
+      formattedContent = formattedContent
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-blue-800">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>')
+        .replace(/\[(.*?)\]/g, '<span class="text-red-600 font-bold">$1</span>');
+      
+      // Create panel number header
+      const panelHeader = document.createElement('div');
+      panelHeader.className = 'bg-gray-300 text-gray-800 text-sm font-bold px-2 py-1';
+      panelHeader.textContent = `Panel ${panelNumber}`;
+      
+      // Create image container
+      const imageContainer = document.createElement('div');
+      imageContainer.className = 'mb-2';
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.className = 'w-full h-auto';
+      img.alt = `Comic panel ${panelNumber} on page ${pageNumber}`;
+      imageContainer.appendChild(img);
+      
+      // Create content container
+      const contentContainer = document.createElement('div');
+      contentContainer.className = 'p-3 text-sm';
+      contentContainer.innerHTML = formattedContent;
+      
+      // Assemble panel
+      panelDiv.appendChild(panelHeader);
+      panelDiv.appendChild(imageContainer);
+      panelDiv.appendChild(contentContainer);
+      
+      return panelDiv;
+    }
+
+    function downloadPDF() {
+      const element = document.getElementById('comic-pages');
+      const opt = {
+        margin: 0.5,
+        filename: 'comic_story.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      
+      // Create a loading notification
+      const notification = document.createElement('div');
+      notification.className = 'fixed bottom-4 right-4 bg-green-600 text-white p-4 rounded-lg shadow-lg font-comic z-50';
+      notification.innerHTML = 'Preparing your PDF...';
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        html2pdf().from(element).set(opt).save().then(() => {
+          notification.innerHTML = 'PDF Downloaded!';
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 2000);
+        });
+      }, 500);
+    }
+    
+    // Set default style and layout
+    setStyle('superhero');
+    selectLayout('classic');
+    
+    // Show the layout preview on page load
+    updateLayoutPreview();
+  </script>
+</body>
+</html>
