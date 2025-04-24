@@ -1,7 +1,3 @@
-Here’s your `README.md` in GitHub-friendly markdown format. You can copy and paste this directly into a file named `README.md` at the root of your project before pushing to GitHub:
-
----
-
 ```markdown
 # 📚 Comic Book Generator API
 
