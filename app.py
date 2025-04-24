@@ -8,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 👈 or use ["http://localhost:5500"] if you want to restrict
+    allow_origins=["https://kurauka.github.io/Comic-Story-Generator-AI/"],  # 👈 or use ["http://localhost:5500"] if you want to restrict
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
